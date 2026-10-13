@@ -1,0 +1,6 @@
+import fs from 'node:fs/promises';import {validateSuite,scoreCase,fingerprint} from './dist/engine.js';
+const [file,endpoint,agent]=process.argv.slice(2);if(!file||!endpoint||!agent){console.error('Usage: node run.mjs suite.json https://agent.example/evaluate agent-v1');process.exit(1);}
+const url=new URL(endpoint);if(url.protocol!=='https:'&&!(url.protocol==='http:'&&['localhost','127.0.0.1'].includes(url.hostname)))throw Error('Use HTTPS or localhost.');
+const suite=validateSuite(JSON.parse(await fs.readFile(file,'utf8'))),run={agent,suiteName:suite.name,signature:fingerprint(suite),createdAt:new Date().toISOString(),results:[]};
+for(const c of suite.cases){const start=performance.now();try{const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',...(process.env.AGENT_TOKEN?{Authorization:`Bearer ${process.env.AGENT_TOKEN}`}:{})},body:JSON.stringify({caseId:c.id,input:c.input}),signal:AbortSignal.timeout(30000),redirect:'error'});if(!response.ok)throw Error(`HTTP ${response.status}`);run.results.push(scoreCase(c,await response.json(),null,performance.now()-start));}catch(e){run.results.push(scoreCase(c,null,e.message,performance.now()-start));}}
+await fs.writeFile('results.json',JSON.stringify(run,null,2));console.log(`Saved results.json: ${run.results.filter(r=>r.passed).length}/${run.results.length} passed.`);
