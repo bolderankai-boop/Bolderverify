@@ -1,0 +1,37 @@
+name: Verify and Forge checks
+on:
+  pull_request:
+  push:
+    branches: [main, 'feat/**']
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm verify
+      - name: Verify local Cloudflare migration
+        run: pnpm db:local
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+
+      - name: Check local Worker API end to end
+        run: |
+          cp .dev.vars.example .dev.vars
+          pnpm dev:api > /tmp/bolderank-worker.log 2>&1 &
+          WORKER_PID=$!
+          trap 'kill "$WORKER_PID" || true' EXIT
+          pnpm smoke || { cat /tmp/bolderank-worker.log; exit 1; }
+        env:
+          WRANGLER_SEND_METRICS: 'false'
