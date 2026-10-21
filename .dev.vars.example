@@ -1,0 +1,5 @@
+# Copy to .dev.vars for local development only. Replace both tokens.
+AUTH_PRINCIPALS=[{"token":"replace-with-long-local-builder-token","orgId":"demo","userId":"builder","role":"builder"},{"token":"replace-with-long-local-reviewer-token","orgId":"demo","userId":"reviewer","role":"reviewer"}]
+# Remote adapters require explicit enablement and a server-controlled endpoint.
+ALLOW_REMOTE_MODELS=false
+
